@@ -1,0 +1,11 @@
+# Class
+BLE1507			KEYWORD1
+
+# Function
+getInstance		KEYWORD2
+begin			KEYWORD2
+writeNotify		KEYWORD2 
+is_ble_notify_enabled	KEYWORD2
+setNotifyCallback	KEYWORD2
+setWriteCallback	KEYWORD2
+setReadCallback		KEYWORD2
