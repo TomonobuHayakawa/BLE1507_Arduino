@@ -2,10 +2,37 @@
 BLE1507			KEYWORD1
 
 # Function
-getInstance		KEYWORD2
-begin			KEYWORD2
-writeNotify		KEYWORD2 
+getInstance			KEYWORD2
+begin				KEYWORD2
+writeNotify			KEYWORD2 
 is_ble_notify_enabled	KEYWORD2
 setNotifyCallback	KEYWORD2
 setWriteCallback	KEYWORD2
 setReadCallback		KEYWORD2
+
+beginPeripheral		KEYWORD2
+beginCentral		KEYWORD2
+writeNotify			KEYWORD2
+is_ble_notify_enabled	KEYWORD2
+
+setNotifyPeripheralCallback	KEYWORD2
+setWritePeripheralCallback	KEYWORD2
+setReadPeripheralCallback	KEYWORD2
+setNotifyCentralCallback	KEYWORD2
+setWriteCentralCallback		KEYWORD2
+setReadCentralCallback		KEYWORD2
+
+startAdvertise		KEYWORD2
+startScan			KEYWORD2
+removeBoundingInfo	KEYWORD2
+isMtuUpdated		KEYWORD2
+getCharacteristic;	KEYWORD2
+pairing()			KEYWORD2
+
+writeDescriptor		KEYWORD2
+readDescriptor		KEYWORD2
+writeCharacteristic	KEYWORD2
+readCharacteristic	KEYWORD2
+
+end					KEYWORD2
+
