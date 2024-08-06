@@ -42,19 +42,6 @@ static char ble_name[BT_NAME_LEN] = "SPR-PERIPHERAL";
 BLE1507 *ble1507;
 
 /****************************************************************************
- * ble callbacks
- ****************************************************************************/
-void bleWriteCB(struct ble_gatt_char_s *ble_gatt_char) {
-  printf("write_callback!");
-  printf("value : ");
-  for (int i = 0; i < ble_gatt_char->value.length; i++) {
-    printf("%c", ble_gatt_char->value.data[i]);
-  }
-  printf("\n");
-
-}
-
-/****************************************************************************
  * setup function
  ****************************************************************************/
 void setup() {

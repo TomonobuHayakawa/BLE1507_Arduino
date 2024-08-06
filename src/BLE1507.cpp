@@ -112,8 +112,10 @@ static void onDescriptorRead(uint16_t, uint16_t, uint8_t*, uint16_t);
  * helper C Functions
  ****************************************************************************/
 static void free_cccd(void);
+#ifdef PRINT_DEBUG
 static void show_uuid(BLE_UUID *uuid);
 static void show_descriptor_handle(const char*, uint16_t);
+#endif
 
 /****************************************************************************
  * helper wrapper class definition
@@ -477,7 +479,7 @@ bool BLE1507::isMtuUpdated()
  ****************************************************************************/
 bool BLE1507::removeBoundingInfo()
 {
-	return ((remove(BONDINFO_FILENAME)==0) ? true : false);
+  return (remove(BONDINFO_FILENAME) == 0); // remove Bound Info file
 }
 
 /****************************************************************************
@@ -513,9 +515,9 @@ static void onLeConnectStatusChanged(struct ble_state_s *ble_state, bool connect
 
   BT_ADDR addr = ble_state->bt_target_addr;
 
-  /* If receive connected status data, this function will call. */
+  /* If receive connected status data, this function will be called. */
 
-  printf("[BLE_GATT] Connect status ADDR:%02X:%02X:%02X:%02X:%02X:%02X, status:%s, reason:%d\n",
+  fprintf(stderr, "[BLE_GATT] Connect status ADDR:%02X:%02X:%02X:%02X:%02X:%02X, status:%s, reason:%d\n",
           addr.address[5], addr.address[4], addr.address[3],
           addr.address[2], addr.address[1], addr.address[0],
           connected ? "Connected" : "Disconnected", reason);
@@ -529,7 +531,7 @@ static void onLeConnectStatusChanged(struct ble_state_s *ble_state, bool connect
 
 static void onConnectedDeviceNameResp(const char *name) {
   /* If receive connected device name data, this function will call. */
-  printf("%s [BLE] Receive connected device name = %s\n", __func__, name);
+  fprintf(stderr, "%s [BLE] Receive connected device name = %s\n", __func__, name);
 }
 
 static void onSaveBondInfo(int num, struct ble_bondinfo_s *bond) {
@@ -544,7 +546,7 @@ static void onSaveBondInfo(int num, struct ble_bondinfo_s *bond) {
    */
   fp = fopen(BONDINFO_FILENAME, "wb");
   if (fp == NULL) {
-    printf("Error: could not create file %s\n", BONDINFO_FILENAME);
+    fprintf(stderr, "Error: could not create file %s\n", BONDINFO_FILENAME);
     return;
   }
 
@@ -556,10 +558,58 @@ static void onSaveBondInfo(int num, struct ble_bondinfo_s *bond) {
     /* Because only cccd is pointer member, save it individually. */
     sz = bond[i].cccd_num * sizeof(struct ble_cccd_s);
     fwrite(bond[i].cccd, 1, sz, fp);
+
+    fprintf(stderr, "[BLE_GATT] onSaveBondInfo num: %d \n"
+                    "    ble_bondinfo_s.ble_addr_s: %2X:%2X:%2X:%2X\n"
+                        ,i
+                        ,bond[i].peer_addr.addr[3], bond[i].peer_addr.addr[2]
+                        ,bond[i].peer_addr.addr[1], bond[i].peer_addr.addr[0]);
   }
 
   fclose(fp);
 }
+
+/*
+static void removeBondInfo(int num, struct ble_bondinfo_s *bond) {
+  int i;
+  FILE *fp;
+  int sz;
+  int f_num;
+  struct ble_bondinfo_s *f_bond;
+  f_bond = (struct ble_bondinfo_s*)malloc(sizeof(struct ble_bondinfo_s)*num); 
+
+  fp = fopen(BONDINFO_FILENAME, "rb");
+  if (fp == NULL) {
+    fprintf(stderr, "Error: could not create file %s\n", BONDINFO_FILENAME);
+    return;
+  }
+
+  fread(&f_num, 1, sizeof(int), fp);
+  if (f_num != num) goto end; 
+
+  for (i = 0; i < num; i++) {
+    fread(&f_bond[i], 1, sizeof(struct ble_bondinfo_s), fp);
+    if (memcmp(&f_bond[i], &bond[i], sizeof(struct ble_bondinfo_s)) != 0) goto end;
+
+    // Because only cccd is pointer member, save it individually.
+    sz = f_bond[i].cccd_num * sizeof(struct ble_cccd_s);
+    fread(f_bond[i].cccd, 1, sz, fp);
+    if (memcmp(f_bond[i].cccd, bond[i].cccd, sz) != 0) goto end;
+  }
+
+  // same file, not remove
+#ifdef PRINT_DEBUG
+  printf("Bound Info is no-change. stay the current file\n");
+#endif
+  fclose(fp); 
+  return;
+
+end:
+  fprintf(stderr, "Bound Info is changed. Remove Bound Info file\n");
+  fclose(fp); 
+  remove(BONDINFO_FILENAME); // remove Bound Info file
+}
+*/
 
 static int onLoadBondInfo(int num, struct ble_bondinfo_s *bond) {
 
@@ -575,7 +625,7 @@ static int onLoadBondInfo(int num, struct ble_bondinfo_s *bond) {
 
   ret = fread(&stored_num, 1, sizeof(int), fp);
   if (ret != sizeof(int)) {
-    printf("Error: could not load due to %s read error.\n", BONDINFO_FILENAME);
+    fprintf(stderr, "Error: could not load due to %s read error.\n", BONDINFO_FILENAME);
     fclose(fp);
     return 0;
   }
@@ -584,24 +634,24 @@ static int onLoadBondInfo(int num, struct ble_bondinfo_s *bond) {
   sz = g_ble_bonded_device_num * sizeof(struct ble_cccd_s *);
   g_cccd = (struct ble_cccd_s **)malloc(sz);
   if (g_cccd == NULL) {
-    printf("Error: could not load due to malloc error.\n");
+    fprintf(stderr, "Error: could not load due to malloc error.\n");
     g_ble_bonded_device_num = 0;
   }
 
   for (i = 0; i < g_ble_bonded_device_num; i++) {
     ret = fread(&bond[i], 1, sizeof(struct ble_bondinfo_s), fp);
     if (ret != sizeof(struct ble_bondinfo_s)) {
-      printf("Error: could not load all data due to %s read error.\n", BONDINFO_FILENAME);
-      printf("The number of loaded device is %d\n", i);
+      fprintf(stderr, "Error: could not load all data due to %s read error.\n", BONDINFO_FILENAME);
+      fprintf(stderr, "The number of loaded device is %d\n", i);
       g_ble_bonded_device_num = i;
       break;
     }
 
     if (bond[i].cccd_num > 1) {
-      printf("Error: could not load all data due to invalid data.\n");
-      printf("cccd_num does not exceed the number of characteristics\n");
-      printf("that is set by this application.\n");
-      printf("The number of loaded device is %d\n", i);
+      fprintf(stderr, "Error: could not load all data due to invalid data.\n");
+      fprintf(stderr, "cccd_num does not exceed the number of characteristics\n");
+      fprintf(stderr, "that is set by this application.\n");
+      fprintf(stderr, "The number of loaded device is %d\n", i);
 
       g_ble_bonded_device_num = i;
       break;
@@ -612,8 +662,8 @@ static int onLoadBondInfo(int num, struct ble_bondinfo_s *bond) {
     g_cccd[i] = (struct ble_cccd_s *)malloc(sz);
 
     if (g_cccd[i] == NULL) {
-      printf("Error: could not load all data due to malloc error.");
-      printf("The number of loaded device is %d\n", i);
+      fprintf(stderr, "Error: could not load all data due to malloc error.");
+      fprintf(stderr, "The number of loaded device is %d\n", i);
 
       g_ble_bonded_device_num = i;
       break;
@@ -622,14 +672,21 @@ static int onLoadBondInfo(int num, struct ble_bondinfo_s *bond) {
     bond[i].cccd = g_cccd[i];
     ret = fread(bond[i].cccd, 1, sz, fp);
     if (ret != sz) {
-      printf("Error: could not load all data due to %s read error.\n", BONDINFO_FILENAME);
-      printf("The number of loaded device is %d\n", i);
+      fprintf(stderr, "Error: could not load all data due to %s read error.\n", BONDINFO_FILENAME);
+      fprintf(stderr, "The number of loaded device is %d\n", i);
       g_ble_bonded_device_num = i;
       break;
     }
+
+    fprintf(stderr, "[BLE_GATT] onLoadBondInfo num: %d \n"
+                    "    ble_bondinfo_s.ble_addr_s: %2X:%2X:%2X:%2X\n"
+                        ,i
+                        ,bond[i].peer_addr.addr[3], bond[i].peer_addr.addr[2]
+                        ,bond[i].peer_addr.addr[1], bond[i].peer_addr.addr[0]);
   }
 
   fclose(fp);
+
   return g_ble_bonded_device_num;
 }
 
@@ -1084,6 +1141,7 @@ int BLE1507::readCharacteristic(uint16_t conn_handle,
 /****************************************************************************
  * helper C Functions
  ****************************************************************************/
+#ifdef PRINT_DEBUG
 static void show_uuid(BLE_UUID *uuid) {
   int i;
   printf("uuid : ");
@@ -1127,6 +1185,7 @@ static void show_descriptor_handle(const char *name, uint16_t handle)
 
   printf("      %s  handle : 0x%04x\n", name, handle);
 }
+#endif
 
 static void free_cccd(void) {
   int i;

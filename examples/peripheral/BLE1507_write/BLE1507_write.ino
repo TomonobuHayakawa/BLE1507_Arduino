@@ -1,5 +1,5 @@
 /*
- * BLE1507_notify.ino
+ * BLE1507_write.ino
  * Copyright (c) 2024 Yoshinori Oota
  *
  * This is an example of BLE1507
@@ -41,18 +41,18 @@ static char ble_name[BT_NAME_LEN] = "SPR-PERIPHERAL";
 
 BLE1507 *ble1507;
 
-/****************************************************************************
- * ble callbacks
- ****************************************************************************/
-void bleWriteCB(struct ble_gatt_char_s *ble_gatt_char) {
-  printf("write_callback!");
-  printf("value : ");
-  for (int i = 0; i < ble_gatt_char->value.length; i++) {
-    printf("%c", ble_gatt_char->value.data[i]);
-  }
-  printf("\n");
 
+/****************************************************************************
+ * ble write callback function
+ ****************************************************************************/
+
+void bleWriteCB(struct ble_gatt_char_s *ble_gatt_char) {
+  printf("write_callback!\n");
+  printf("value : ");
+  printf("%s", &ble_gatt_char->value.data[0]);
+  printf("\n");
 }
+
 
 /****************************************************************************
  * setup function
@@ -69,12 +69,5 @@ void setup() {
  * loop function
  ****************************************************************************/
 void loop() {
-  static uint8_t data = 0;
-  uint8_t str_data[4] = {0};
-  sprintf((char*)str_data, "%03d", data++);
-  data %= 100;
-  ble1507->writeNotify(str_data, 3);
-  printf("raise notify to the central : ");
-  printf("%s\n", str_data);
-  sleep(1);
+
 }
