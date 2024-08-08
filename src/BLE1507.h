@@ -53,6 +53,11 @@ class BLE1507 {
     struct ble_gattc_db_disc_char_s* getCharacteristic();
     int  pairing();
 
+    int writeDescriptor(uint16_t, uint8_t*, uint16_t);
+    int readDescriptor(uint16_t, uint8_t*, uint16_t*);
+    int writeCharacteristic(uint16_t, uint8_t*, uint16_t, bool);
+    int readCharacteristic(uint16_t, uint8_t*, uint16_t*);
+
     int writeDescriptor(uint16_t, uint16_t, uint8_t*, uint16_t);
     int readDescriptor(uint16_t, uint16_t, uint8_t*, uint16_t*);
     int writeCharacteristic(uint16_t, uint16_t, uint8_t*, uint16_t, bool);

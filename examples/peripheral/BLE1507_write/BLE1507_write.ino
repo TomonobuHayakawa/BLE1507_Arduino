@@ -47,10 +47,18 @@ BLE1507 *ble1507;
  ****************************************************************************/
 
 void bleWriteCB(struct ble_gatt_char_s *ble_gatt_char) {
+  static int led = 0;
   printf("write_callback!\n");
+  ledOff(led);
+  printf("length : %d \n",ble_gatt_char->value.length);
   printf("value : ");
-  printf("%s", &ble_gatt_char->value.data[0]);
+  for (int i = 0; i < ble_gatt_char->value.length; i++) {
+    printf("%c ", ble_gatt_char->value.data[i]);
+  }
+  led = (ble_gatt_char->value.data[0] % 4)+ 0x40;
+  ledOn(led);
   printf("\n");
+
 }
 
 

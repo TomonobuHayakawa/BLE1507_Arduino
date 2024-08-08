@@ -47,8 +47,7 @@ BLE1507 *ble1507;
 void setup() {
   ble1507 = BLE1507::getInstance();
   ble1507->beginPeripheral(ble_name, addr, UUID_SERVICE, UUID_CHAR);
-  ble1507->setWritePeripheralCallback(bleWriteCB);
-
+  
   ble1507->startAdvertise();
 }
 

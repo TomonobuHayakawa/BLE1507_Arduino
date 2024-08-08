@@ -836,20 +836,15 @@ static void onCentralWrite(uint16_t conn_handle, struct ble_gatt_char_s *ble_gat
 
 #ifdef PRINT_DEBUG
   printf("%s [BLE] start\n", __func__);
-
-  printf("handle : %d\n", ble_gatt_char->handle);
   show_uuid(&ble_gatt_char->uuid);
-  printf("value_len : %d\n", ble_gatt_char->value.length);
-  printf("value : ");
-  for (int i = 0; i < ble_gatt_char->value.length; i++) {
-    printf("%02x ", ble_gatt_char->value.data[i]);
-  }
-  printf("\n");
+
 #endif
 
   if (write_central != nullptr) {
     write_central(conn_handle, ble_gatt_char);
   }
+
+  g_charwr_result = ble_gatt_char->status;
 
 #ifdef PRINT_DEBUG
   printf("%s [BLE] end\n", __func__);
@@ -866,6 +861,10 @@ static void onCentralRead(uint16_t conn_handle, struct ble_gatt_char_s *ble_gatt
     read_central(conn_handle, ble_gatt_char);
   }
 
+  g_read_datalen = ble_gatt_char->value.length;
+  memcpy(g_read_data, ble_gatt_char->value.data, g_read_datalen);
+  g_charrd_result = ble_gatt_char->status;
+
 #ifdef PRINT_DEBUG
   printf("%s [BLE] end \n", __func__);
 #endif
@@ -875,7 +874,7 @@ static void onCentralNotify(unsigned short conn_handle, struct ble_gatt_char_s *
 
 #ifdef PRINT_DEBUG
   printf("%s [BLE] start \n", __func__);
-  printf("handle : %d\n", ble_gatt_char->handle);
+  printf("handle : %x, %x\n", conn_handle, ble_gatt_char->handle);
   show_uuid(&ble_gatt_char->uuid);
 #endif
 
@@ -909,6 +908,8 @@ static void onDiscovery(struct ble_gatt_event_db_discovery_t *db_disc)
   struct ble_gattc_db_discovery_s *db;
   struct ble_gattc_db_disc_srv_s  *srv;
   struct ble_gattc_db_disc_char_s *ch;
+  char   uuid[BLE_UUID_128BIT_STRING_BUFSIZE];
+  BLE_CHAR_PROP prop;
 
   db = &db_disc->params.db_discovery;
   srv = &db->services[0];
@@ -919,14 +920,28 @@ static void onDiscovery(struct ble_gatt_event_db_discovery_t *db_disc)
 
       show_uuid(&srv->srv_uuid);
 
+      bleutil_convert_uuid2str(&srv->srv_uuid, uuid, BLE_UUID_128BIT_STRING_BUFSIZE);
+      printf("   uuid : %s\n", uuid);
+
       ch = &srv->characteristics[0];
 
       for (j = 0; j < srv->char_count; j++, ch++)
         {
+          prop = ch->characteristic.char_prope;
+
           printf("   === CHR[%d] ===\n", j);
           printf("      decl  handle : 0x%04x\n", ch->characteristic.char_declhandle);
           printf("      value handle : 0x%04x\n", ch->characteristic.char_valhandle);
-          show_uuid(&ch->characteristic.char_valuuid);
+          bleutil_convert_uuid2str(&ch->characteristic.char_valuuid,
+                                   uuid,
+                                   BLE_UUID_128BIT_STRING_BUFSIZE);
+          printf("      uuid         : %s\n", uuid);
+          printf("      property     : %s%s%s%s%s\n",
+                 prop.notify ? "notify," : "",
+                 prop.indicate ? "indicate," : "",
+                 prop.read   ? "read," : "",
+                 prop.write  ? "write," : "",
+                 prop.writeWoResp ? "write w/o rsp" : "");
 
           show_descriptor_handle("cccd", ch->cccd_handle);
           show_descriptor_handle("cepd", ch->cepd_handle);
@@ -940,9 +955,20 @@ static void onDiscovery(struct ble_gatt_event_db_discovery_t *db_disc)
             {
               last_cccd_handle = ch->cccd_handle;
             }
+
+          /* In this application, use a characteristic that has
+           * read/write/notify property.
+           * So, store only such data.
+           */
+
+          if (prop.notify && prop.read && (prop.write || prop.writeWoResp))
+            {
+              memcpy(&g_nrw_char, ch, sizeof(struct ble_gattc_db_disc_char_s));
+            }
         }
 
       printf("\n");
+
     }
 
   /* The end_handle of the last service is 0xFFFF.
@@ -957,10 +983,7 @@ static void onDiscovery(struct ble_gatt_event_db_discovery_t *db_disc)
                                     s_ble_state->ble_connect_handle);
         }
     }
-	puts("g_discovered = true");
   g_discovered = true;
-	
-//ble_pairing(s_ble_state->ble_connect_handle);
 
 #ifdef PRINT_DEBUG
   printf("%s [BLE] end \n", __func__);
@@ -1015,6 +1038,20 @@ static void onDescriptorRead(uint16_t conn_handle, uint16_t handle,
 /****************************************************************************
   Descriptor control
  ****************************************************************************/
+int BLE1507::writeDescriptor(uint16_t desc_handle,
+                             uint8_t  *buf,
+                             uint16_t len)
+{
+  return writeDescriptor(ble_conn_handle, desc_handle, buf,len);
+}
+
+int BLE1507::readDescriptor(uint16_t desc_handle,
+                            uint8_t  *buf,
+                            uint16_t *len)
+{
+  return readDescriptor(ble_conn_handle, desc_handle, buf,len);
+}
+
 
 int BLE1507::writeDescriptor(uint16_t conn_handle,
                             uint16_t desc_handle,
@@ -1074,17 +1111,30 @@ int BLE1507::readDescriptor(uint16_t conn_handle,
 /****************************************************************************
   Characteristic control
  ****************************************************************************/
-int BLE1507::writeCharacteristic(uint16_t conn_handle,
-                                uint16_t char_handle,
-                                uint8_t  *buf,
-                                uint16_t len,
-                                bool     rsp)
+int BLE1507::writeCharacteristic(uint16_t char_handle,
+                                 uint8_t  *buf,
+                                 uint16_t len,
+                                 bool     rsp)
 {
-  int ret;
+    return writeCharacteristic(ble_conn_handle, char_handle, buf, len, rsp);
+}
 
+int BLE1507::readCharacteristic(uint16_t char_handle,
+                                uint8_t  *buf,
+                                uint16_t *len)
+{
+    return readCharacteristic(ble_conn_handle, char_handle, buf, len);
+}
+
+int BLE1507::writeCharacteristic(uint16_t conn_handle,
+                                 uint16_t char_handle,
+                                 uint8_t  *buf,
+                                 uint16_t len,
+                                 bool     rsp)
+{
   g_charwr_result = RESULT_NOT_RECEIVE;
 
-  ret = ble_write_characteristic(conn_handle, char_handle, buf, len, rsp);
+  int ret = ble_write_characteristic(conn_handle, char_handle, buf, len, rsp);
   if (ret != BT_SUCCESS)
     {
       return ret;
@@ -1108,15 +1158,14 @@ int BLE1507::writeCharacteristic(uint16_t conn_handle,
 }
 
 int BLE1507::readCharacteristic(uint16_t conn_handle,
-                               uint16_t char_handle,
-                               uint8_t  *buf,
-                               uint16_t *len)
+                                uint16_t char_handle,
+                                uint8_t  *buf,
+                                uint16_t *len)
 {
-  int ret;
 
   g_charrd_result = RESULT_NOT_RECEIVE;
 
-  ret = ble_read_characteristic(conn_handle, char_handle);
+  int ret = ble_read_characteristic(conn_handle, &char_handle);
   if (ret != BT_SUCCESS)
     {
       return ret;
