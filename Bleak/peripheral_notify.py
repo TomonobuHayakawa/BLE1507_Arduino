@@ -18,6 +18,13 @@ async def run():
     async with BleakClient(device_address) as client:
         print(f"Connected: {client.is_connected}")
 
+        paired = await client.pair()
+        if paired:
+            print("Successfully paired with the device.")
+        else:
+            print(f"Device can not connect.")
+            exit(1);
+
         # 通知を受け取るキャラクタリスティックの通知を開始
         await client.start_notify(notify_characteristic_uuid, notification_handler)
         print(f"Started notifications on {notify_characteristic_uuid}")
