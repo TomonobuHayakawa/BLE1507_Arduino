@@ -61,14 +61,34 @@ void bleWriteCB(struct ble_gatt_char_s *ble_gatt_char) {
 
 }
 
+void bleCommandCB(struct ble_gatt_char_s *ble_gatt_char) {
+  String command = "";
+  for (int i = 0; i < ble_gatt_char->value.length; i++) {
+    command += (char)ble_gatt_char->value.data[i];
+  }
+  Serial.println(command);
 
+  if (command.equals("start")) {
+    Serial.println("Recieve: start!");
+  }
+  else if (command.equals("stop")) {
+    Serial.println("Recieve: stop!");
+  }
+  else {
+    Serial.println("Recieve unknown command.");
+  }
+}
 /****************************************************************************
  * setup function
  ****************************************************************************/
 void setup() {
+
+  Serial.begin(115200);
+
   ble1507 = BLE1507::getInstance();
   ble1507->beginPeripheral(ble_name, addr, UUID_SERVICE, UUID_CHAR);
   ble1507->setWritePeripheralCallback(bleWriteCB);
+//  ble1507->removeBoundingInfo();
 
   ble1507->startAdvertise();
 }
