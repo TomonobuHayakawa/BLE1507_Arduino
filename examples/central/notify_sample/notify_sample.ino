@@ -31,27 +31,42 @@ void bleNotifyCB(uint16_t conn_handle, struct ble_gatt_char_s *ble_gatt_char) {
   printf("\n");
 
 }
+
+bool is_connected;
+void bleDisconnectCB(uint16_t conn_handle) {
+  is_connected = false;
+  puts("disconnect_callback!");
+}
+
 /****************************************************************************
  * setup function
  ****************************************************************************/
 void setup()
 {
-  struct ble_gattc_db_disc_char_s *nrw_char;
-
   ble1507 = BLE1507::getInstance();
-//  ble1507->removeBoundingInfo();
+  ble1507->removeBoundingInfo();
+  is_connected = false;
   ble1507->beginCentral(ble_name, addr);
   ble1507->setNotifyCentralCallback(&bleNotifyCB);
+  ble1507->setDisconnectCallback(&bleDisconnectCB);
 
-  ble1507->startScan("SPR-PERIPHERAL");
-
-  while(!ble1507->isMtuUpdated());
-  nrw_char = ble1507->getCharacteristic();
-
-  ble1507->pairing();
 }
 
 void loop()
 {
-  sleep(100);
+  if(!is_connected){
+    struct ble_gattc_db_disc_char_s *nrw_char;
+
+    puts("Start Scan!");
+    ble1507->startScan("SPR-PERIPHERAL");
+
+    while(!ble1507->isMtuUpdated());
+    is_connected = true;
+    nrw_char = ble1507->getCharacteristic();
+
+    ble1507->pairing();
+  }
+
+  sleep(1);
+
 }

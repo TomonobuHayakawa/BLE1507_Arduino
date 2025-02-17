@@ -11,6 +11,8 @@
 #define NOTIFICATION_ENABLED 1
 #define NOTIFICATION_DISABLED 0
 
+typedef void (*DisconnectCallback)(uint16_t conn_handle);
+
 typedef void (*NotifyPeripheralCallback)(struct ble_gatt_char_s*);
 typedef void (*WritePeripheralCallback)(struct ble_gatt_char_s*);
 typedef void (*ReadPeripheralCallback)(struct ble_gatt_char_s*);
@@ -45,6 +47,8 @@ class BLE1507 {
     void setNotifyCentralCallback(NotifyCentralCallback notify_cb);
     void setWriteCentralCallback(WriteCentralCallback write_cb);
     void setReadCentralCallback(ReadCentralCallback read_cb);
+
+    void setDisconnectCallback(DisconnectCallback disconnect_cb);
 
     bool startAdvertise();
     bool startScan(const char*);
