@@ -65,6 +65,9 @@ void loop()
     nrw_char = ble1507->getCharacteristic();
 
     ble1507->pairing();
+
+    ble1507->accessDescriptor(nrw_char);
+
   }
 
   sleep(1);

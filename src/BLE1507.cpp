@@ -1,6 +1,6 @@
 #include "BLE1507.h"
 
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 
 /****************************************************************************
  * static Data
@@ -715,6 +715,8 @@ static int onLoadBondInfo(int num, struct ble_bondinfo_s *bond) {
 static void onMtuSize(uint16_t handle, uint16_t sz) {
   printf("negotiated MTU size(connection handle = %d) : %d\n", handle, sz);
 
+  ble_conn_handle = s_ble_state->ble_connect_handle;
+
   mtu_updated = true;
 }
 
@@ -876,6 +878,9 @@ static void onCentralRead(uint16_t conn_handle, struct ble_gatt_char_s *ble_gatt
 
 #ifdef PRINT_DEBUG
   printf("%s [BLE] start\n", __func__);
+  printf("   handle : 0x%04x\n", ble_gatt_char->handle);
+  printf("   value len : %d\n",  ble_gatt_char->value.length);
+  printf("   conn_handle : 0x%04x\n", conn_handle);
 #endif
 
   if (read_central != nullptr) {
@@ -884,7 +889,7 @@ static void onCentralRead(uint16_t conn_handle, struct ble_gatt_char_s *ble_gatt
 
   g_read_datalen = ble_gatt_char->value.length;
   memcpy(g_read_data, ble_gatt_char->value.data, g_read_datalen);
-  g_charrd_result = ble_gatt_char->status;
+  g_charrd_result = (g_read_datalen > 0) ? BT_SUCCESS : BT_FAIL;
 
 #ifdef PRINT_DEBUG
   printf("%s [BLE] end \n", __func__);
@@ -939,7 +944,9 @@ static void onDiscovery(struct ble_gatt_event_db_discovery_t *db_disc)
     {
       printf("=== SRV[%d] ===\n", i);
 
+#ifdef PRINT_DEBUG
       show_uuid(&srv->srv_uuid);
+#endif
 
       bleutil_convert_uuid2str(&srv->srv_uuid, uuid, BLE_UUID_128BIT_STRING_BUFSIZE);
       printf("   uuid : %s\n", uuid);
@@ -964,6 +971,7 @@ static void onDiscovery(struct ble_gatt_event_db_discovery_t *db_disc)
                  prop.write  ? "write," : "",
                  prop.writeWoResp ? "write w/o rsp" : "");
 
+#ifdef PRINT_DEBUG
           show_descriptor_handle("cccd", ch->cccd_handle);
           show_descriptor_handle("cepd", ch->cepd_handle);
           show_descriptor_handle("cudd", ch->cudd_handle);
@@ -971,6 +979,7 @@ static void onDiscovery(struct ble_gatt_event_db_discovery_t *db_disc)
           show_descriptor_handle("cpfd", ch->cpfd_handle);
           show_descriptor_handle("cafd", ch->cafd_handle);
           printf("\n");
+#endif
 
           if (ch->cccd_handle != BLE_GATT_INVALID_ATTRIBUTE_HANDLE)
             {
@@ -1059,6 +1068,11 @@ static void onDescriptorRead(uint16_t conn_handle, uint16_t handle,
 /****************************************************************************
   Descriptor control
  ****************************************************************************/
+int BLE1507::accessDescriptor(struct ble_gattc_db_disc_char_s *char_db)
+{
+  return accessDescriptor(ble_conn_handle, char_db);
+}
+
 int BLE1507::writeDescriptor(uint16_t desc_handle,
                              uint8_t  *buf,
                              uint16_t len)
@@ -1073,6 +1087,77 @@ int BLE1507::readDescriptor(uint16_t desc_handle,
   return readDescriptor(ble_conn_handle, desc_handle, buf,len);
 }
 
+int BLE1507::accessDescriptor(uint16_t conn_handle,
+                              struct ble_gattc_db_disc_char_s *char_db)
+{
+  int ret = BT_SUCCESS;
+  uint16_t buf = 0;
+  uint16_t len = 0;
+
+	puts("oooo!!!");
+
+  if (char_db->cccd_handle != BLE_GATT_INVALID_ATTRIBUTE_HANDLE)
+    {
+      ret = readDescriptor(conn_handle, char_db->cccd_handle, (uint8_t *)&buf, &len);
+      if (ret != BT_SUCCESS)
+        {
+          return ret;
+        }
+
+      if (buf == NOTIFICATION_DISABLED)
+        {
+          buf = NOTIFICATION_ENABLED;
+          ret = writeDescriptor(conn_handle, char_db->cccd_handle, (uint8_t *)&buf, len);
+        }
+    }
+
+  if (char_db->cepd_handle != BLE_GATT_INVALID_ATTRIBUTE_HANDLE)
+    {
+      ret = readDescriptor(conn_handle, char_db->cepd_handle, (uint8_t *)&buf, &len);
+      if (ret != BT_SUCCESS)
+        {
+          return ret;
+        }
+    }
+
+  if (char_db->cudd_handle != BLE_GATT_INVALID_ATTRIBUTE_HANDLE)
+    {
+      ret = readDescriptor(conn_handle, char_db->cudd_handle, (uint8_t *)&buf, &len);
+      if (ret != BT_SUCCESS)
+        {
+          return ret;
+        }
+    }
+
+  if (char_db->sccd_handle != BLE_GATT_INVALID_ATTRIBUTE_HANDLE)
+    {
+      ret = readDescriptor(conn_handle, char_db->sccd_handle, (uint8_t *)&buf, &len);
+      if (ret != BT_SUCCESS)
+        {
+          return ret;
+        }
+    }
+
+  if (char_db->cpfd_handle != BLE_GATT_INVALID_ATTRIBUTE_HANDLE)
+    {
+      ret = readDescriptor(conn_handle, char_db->cpfd_handle, (uint8_t *)&buf, &len);
+      if (ret != BT_SUCCESS)
+        {
+          return ret;
+        }
+    }
+
+  if (char_db->cafd_handle != BLE_GATT_INVALID_ATTRIBUTE_HANDLE)
+    {
+      ret = readCharacteristic(conn_handle, char_db->cafd_handle, (uint8_t *)&buf, &len);
+      if (ret != BT_SUCCESS)
+        {
+          return ret;
+        }
+    }
+
+  return ret;
+}
 
 int BLE1507::writeDescriptor(uint16_t conn_handle,
                             uint16_t desc_handle,

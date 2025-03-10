@@ -36,7 +36,7 @@
 #define UUID_SERVICE  0x3802
 #define UUID_CHAR     0x4a02
 
-static BT_ADDR addr = {{0x19, 0x84, 0x06, 0x14, 0xAB, 0xCD}};
+static BT_ADDR addr = {{0x20, 0x84, 0x06, 0x14, 0xAB, 0xCD}};
 static char ble_name[BT_NAME_LEN] = "SPR-PERIPHERAL";
 
 BLE1507 *ble1507;
