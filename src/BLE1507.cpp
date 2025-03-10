@@ -46,6 +46,8 @@ NotifyCentralCallback notify_central = nullptr;
 WriteCentralCallback write_central = nullptr;
 ReadCentralCallback read_central = nullptr;
 
+DisconnectCallback disconnect = nullptr;
+
 #define RESULT_NOT_RECEIVE 1
 #define INVALID_PARAMS     2
 
@@ -75,6 +77,9 @@ static void onEncryptionResult(uint16_t, bool result);
 
 /* Result callback for scan */
 static void onScanResult(BT_ADDR addr, uint8_t *data, uint8_t len);
+
+/* Descriptor read response */
+static void onDisconnect(struct ble_state_s *ble_state);
 
 /****************************************************************************
  * static C Function Prototypes  BLE GATT callbacks
@@ -359,6 +364,8 @@ bool BLE1507::startAdvertise()
  ****************************************************************************/
 bool BLE1507::startScan(const char *val) 
 {
+  mtu_updated = false;
+
   /* BLE start scan */
   int ret = ble_start_scan(false);
   if (ret != BT_SUCCESS) {
@@ -467,6 +474,9 @@ void BLE1507::setReadCentralCallback(ReadCentralCallback read_cb) {
   read_central = read_cb; 
 }
 
+void BLE1507::setDisconnectCallback(DisconnectCallback disconnect_cb) {
+  disconnect = disconnect_cb; 
+}
 
 bool BLE1507::isMtuUpdated()
 {
@@ -522,11 +532,22 @@ static void onLeConnectStatusChanged(struct ble_state_s *ble_state, bool connect
           addr.address[2], addr.address[1], addr.address[0],
           connected ? "Connected" : "Disconnected", reason);
 
-  ble_conn_handle = ble_state->ble_connect_handle;
-  ble_is_notify_enabled = false;
+  if (!connected)
+    {
+      onDisconnect(ble_state);
+      s_ble_state = NULL;
+    }
+  else
+    {
+      s_ble_state = ble_state;
+    }
 
-  s_ble_state = ble_state;
+}
 
+static void onDisconnect(struct ble_state_s *ble_state) {
+  if (disconnect != nullptr) {
+    disconnect(ble_state->ble_connect_handle);
+  }
 }
 
 static void onConnectedDeviceNameResp(const char *name) {
